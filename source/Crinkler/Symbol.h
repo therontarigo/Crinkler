@@ -8,6 +8,7 @@ const int SYMBOL_IS_FUNCTION =		0x04;
 const int SYMBOL_IS_SECTION =		0x08;
 
 #include <string>
+#include <vector>
 
 class Hunk;
 class Symbol {
@@ -22,6 +23,8 @@ public:
 	int				size;
 	int				hunk_offset;	// For compression report
 	bool			fromLibrary;
+
+  std::string	friendlyName;
 
 	// Demangle the VC decorations
 	std::string GetUndecoratedName() const;

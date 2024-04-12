@@ -142,6 +142,8 @@ public:
 	std::map<int, Symbol*> GetOffsetToRelocationMap();
 	std::map<int, Symbol*> GetOffsetToSymbolMap();
 	const std::string& GetID();
+
+	std::map<std::string, Symbol*>& GetSymbols();
 };
 
 #endif

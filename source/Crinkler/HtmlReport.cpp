@@ -723,3 +723,138 @@ void HtmlReport(CompressionReportRecord* csr, const char* filename, Hunk& hunk, 
 
 	fclose(out);
 }
+
+int GetOutputSize(CompressionReportRecord* csr)
+{
+	return 0;
+	//csr->size
+}
+
+#pragma pack(push)
+#pragma pack(1)
+struct KKPByteData
+{
+  unsigned char data = 0;
+  short symbol = 0;
+  double packed = 0;
+  short line = -1;
+  short file = -1;
+};
+struct KKPSymbolData
+{
+	std::string name;
+  double packedSize = 0;
+  int unpackedSize = 0;
+  bool isCode = false;
+  int fileID = 0;
+  unsigned int sourcePos = 0xffffffff;
+};
+#pragma pack(pop)
+
+
+static void KKPReportRecursive(CompressionReportRecord* csr, FILE* out, Hunk& hunk, Hunk& untransformedHunk, const int* sizefill, bool iscode, map<int, Symbol*>& relocs, map<int, Symbol*>& symbols, map<string, int>& opcodeCounters,
+	const char* exefilename, int filesize, Crinkler* crinkler, KKPByteData* kkpData, std::vector<KKPSymbolData>& kkpSymbols, std::string parentName)
+{
+	if (!csr->children.size())
+	{
+		if (csr->compressedPos >= 0)
+		{
+			KKPSymbolData symbol;
+			symbol.name = csr->name;
+			symbol.isCode = csr->type & RECORD_CODE;
+
+			if (symbols.find(csr->pos) != symbols.end() && symbols[csr->pos]->friendlyName.size())
+				symbol.name = symbols[csr->pos]->friendlyName;
+
+			symbol.unpackedSize = csr->size;
+			symbol.sourcePos = csr->pos;
+
+			int symbolID = (int)kkpSymbols.size();
+
+			for (int x = 0; x < csr->size; x++)
+			{
+				kkpData[csr->pos + x].symbol = symbolID;
+				symbol.packedSize += (sizefill[csr->pos + x + 1] - sizefill[csr->pos + x]);
+			}
+
+			symbol.packedSize /= (double)BIT_PRECISION * 8.0;
+
+      kkpSymbols.emplace_back(symbol);			
+		}
+		return;
+	}
+
+	for (CompressionReportRecord* record : csr->children)
+		KKPReportRecursive(record, out, hunk, untransformedHunk, sizefill, iscode, relocs, symbols, opcodeCounters, exefilename, filesize, crinkler, kkpData, kkpSymbols, parentName + "::" + csr->name);
+}
+
+void KKPReport(CompressionReportRecord* csr, const char* filename, Hunk& hunk, Hunk& untransformedHunk, const int* sizefill,
+  const char* exefilename, int filesize, Crinkler* crinkler) {
+  identmap.clear();
+  num_divs[0] = num_divs[1] = num_divs[2] = num_divs[3] = 0;
+  num_sections = 0;
+
+  map<int, Symbol*> relocs = hunk.GetOffsetToRelocationMap();
+  map<int, Symbol*> symbols = hunk.GetOffsetToSymbolMap();
+  FILE* out;
+  map<string, int> opcodeCounters;
+  if (fopen_s(&out, filename, "wb")) {
+    Log::Error(filename, "Cannot open file for writing");
+    return;
+  }
+
+	std::vector<KKPSymbolData> symbolNames;
+
+	int size = hunk.GetRawSize();
+	unsigned char* data = (unsigned char*)hunk.GetPtr();
+
+	KKPByteData* kkpData = new KKPByteData[size];
+	memset(kkpData, 0, sizeof(KKPByteData) * size);
+
+	for (int x = 0; x < size; x++)
+	{
+		kkpData[x].data = data[x];
+		int size = sizefill[x + 1] - sizefill[x];
+		kkpData[x].packed = size / (double)BIT_PRECISION / 8.0;
+		kkpData[x].file = 0;
+		kkpData[x].line = -1;
+	}
+
+	KKPReportRecursive(csr, out, hunk, untransformedHunk, sizefill, false, relocs, symbols, opcodeCounters,
+		exefilename, filesize, crinkler, kkpData, symbolNames, "");
+
+	fwrite("KK64", 4, 1, out);
+	fwrite(&size, 4, 1, out);
+	int fileCount = 1;
+	fwrite(&fileCount, 4, 1, out);
+
+	for (int x = 0; x < fileCount; x++)
+	{
+		std::string stub = "Crinkler doesn't support cpp file+line info yet.";
+		fwrite(stub.data(), 1, stub.size() + 1, out);
+		int length = 0;
+    fwrite(&length, 4, 1, out);
+		fwrite(&length, 4, 1, out);
+	}
+
+	int symbolCount = (int)symbolNames.size();
+  fwrite(&symbolCount, 4, 1, out);
+	for (auto& symbol : symbolNames)
+	{
+		fwrite(symbol.name.c_str(), 1, symbol.name.length() + 1, out);
+		fwrite(&symbol.packedSize, sizeof(symbol.packedSize), 1, out);
+    fwrite(&symbol.unpackedSize, sizeof(symbol.unpackedSize), 1, out);
+    fwrite(&symbol.isCode, 1, 1, out);
+    fwrite(&symbol.fileID, 4, 1, out);
+    fwrite(&symbol.sourcePos, 4, 1, out);
+	}
+
+	for (int x = 0; x < size; x++)
+	{
+		fwrite(&kkpData[x], sizeof(KKPByteData), 1, out);
+	}
+
+  fclose(out);
+
+  delete[] kkpData;
+}

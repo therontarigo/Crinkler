@@ -501,3 +501,8 @@ const string& Hunk::GetID() {
 	}
 	return m_cached_id;
 }
+
+std::map<std::string, Symbol*>& Hunk::GetSymbols()
+{
+	return m_symbols;
+}

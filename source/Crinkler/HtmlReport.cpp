@@ -751,9 +751,8 @@ struct KKPSymbolData
 };
 #pragma pack(pop)
 
-
 static void KKPReportRecursive(CompressionReportRecord* csr, FILE* out, Hunk& hunk, Hunk& untransformedHunk, const int* sizefill, bool iscode, map<int, Symbol*>& relocs, map<int, Symbol*>& symbols, map<string, int>& opcodeCounters,
-	const char* exefilename, int filesize, Crinkler* crinkler, KKPByteData* kkpData, std::vector<KKPSymbolData>& kkpSymbols, std::string parentName)
+	const char* exefilename, int filesize, Crinkler* crinkler, KKPByteData* kkpData, std::vector<KKPSymbolData>& kkpSymbols, std::string parentName, std::vector<std::string>& sourceFileList)
 {
 	if (!csr->children.size())
 	{
@@ -763,8 +762,51 @@ static void KKPReportRecursive(CompressionReportRecord* csr, FILE* out, Hunk& hu
 			symbol.name = csr->name;
 			symbol.isCode = csr->type & RECORD_CODE;
 
-			if (symbols.find(csr->pos) != symbols.end() && symbols[csr->pos]->friendlyName.size())
-				symbol.name = symbols[csr->pos]->friendlyName;
+			if (symbols.find(csr->pos) != symbols.end())
+			{
+				auto sym = symbols[csr->pos];
+
+				if (sym->friendlyName.size())
+					symbol.name = sym->friendlyName;
+
+				if (sym->sourceFile.size() && sym->lines.size())
+				{
+
+					int fileIdx = -1;
+					for (int x = 0; x < sourceFileList.size(); x++)
+					{
+						if (sourceFileList[x] == sym->sourceFile)
+						{
+							fileIdx = x;
+							break;
+						}
+					}
+
+					if (fileIdx < 0)
+					{
+						fileIdx = (int)sourceFileList.size();
+						sourceFileList.emplace_back(sym->sourceFile);
+					}
+
+          for (int x = 1; x < sym->lines.size(); x++)
+          {
+            int line = sym->lines[x - 1].lineNumber;
+            for (int y = sym->lines[x - 1].startOffset; y < sym->lines[x].startOffset; y++)
+            {
+              kkpData[y + csr->pos].line = line;
+              kkpData[y + csr->pos].file = fileIdx;
+            }
+          }
+
+          for (int y = sym->lines.back().startOffset; y < csr->size; y++)
+          {
+            kkpData[y + csr->pos].line = sym->lines.back().lineNumber;
+						kkpData[y + csr->pos].file = fileIdx;
+          }
+
+				}
+
+			}
 
 			symbol.unpackedSize = csr->size;
 			symbol.sourcePos = csr->pos;
@@ -785,7 +827,7 @@ static void KKPReportRecursive(CompressionReportRecord* csr, FILE* out, Hunk& hu
 	}
 
 	for (CompressionReportRecord* record : csr->children)
-		KKPReportRecursive(record, out, hunk, untransformedHunk, sizefill, iscode, relocs, symbols, opcodeCounters, exefilename, filesize, crinkler, kkpData, kkpSymbols, parentName + "::" + csr->name);
+		KKPReportRecursive(record, out, hunk, untransformedHunk, sizefill, iscode, relocs, symbols, opcodeCounters, exefilename, filesize, crinkler, kkpData, kkpSymbols, parentName + "::" + csr->name, sourceFileList);
 }
 
 void KKPReport(CompressionReportRecord* csr, const char* filename, Hunk& hunk, Hunk& untransformedHunk, const int* sizefill,
@@ -820,18 +862,23 @@ void KKPReport(CompressionReportRecord* csr, const char* filename, Hunk& hunk, H
 		kkpData[x].line = -1;
 	}
 
+  std::vector<std::string> sourceFileList;
+  sourceFileList.emplace_back("<No Source>");
+
 	KKPReportRecursive(csr, out, hunk, untransformedHunk, sizefill, false, relocs, symbols, opcodeCounters,
-		exefilename, filesize, crinkler, kkpData, symbolNames, "");
+		exefilename, filesize, crinkler, kkpData, symbolNames, "", sourceFileList);
 
 	fwrite("KK64", 4, 1, out);
 	fwrite(&size, 4, 1, out);
-	int fileCount = 1;
+	int fileCount = (int)sourceFileList.size();
+
 	fwrite(&fileCount, 4, 1, out);
 
 	for (int x = 0; x < fileCount; x++)
 	{
-		std::string stub = "Crinkler doesn't support cpp file+line info yet.";
-		fwrite(stub.data(), 1, stub.size() + 1, out);
+		fwrite(sourceFileList[x].data(), 1, sourceFileList[x].size() + 1, out);
+
+		// ignore this for now
 		int length = 0;
     fwrite(&length, 4, 1, out);
 		fwrite(&length, 4, 1, out);

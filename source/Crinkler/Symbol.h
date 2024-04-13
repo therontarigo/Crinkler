@@ -10,6 +10,13 @@ const int SYMBOL_IS_SECTION =		0x08;
 #include <string>
 #include <vector>
 
+struct LineInfo
+{
+  int startOffset;
+  int lineNumber;
+  int fileID;
+};
+
 class Hunk;
 class Symbol {
 public:
@@ -25,6 +32,9 @@ public:
 	bool			fromLibrary;
 
   std::string	friendlyName;
+
+	std::string sourceFile;
+	std::vector<LineInfo> lines;
 
 	// Demangle the VC decorations
 	std::string GetUndecoratedName() const;

@@ -151,7 +151,7 @@ HunkList* CoffObjectLoader::Load(const char* data, int size, const char* module)
 			if(sym->StorageClass == IMAGE_SYM_CLASS_STATIC ||	// Perform name mangling on local symbols
 				sym->StorageClass == IMAGE_SYM_CLASS_LABEL) {
 
-        s->friendlyName = s->name;
+				s->friendlyName = s->name;
 
 				char symname[1000];
 				sprintf_s(symname, 1000, "l[%s(%d)]!%s", module, i, s->name.c_str());

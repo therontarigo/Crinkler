@@ -24,7 +24,7 @@ public:
 	int				hunk_offset;	// For compression report
 	bool			fromLibrary;
 
-  std::string	friendlyName;
+	std::string		friendlyName;
 
 	// Demangle the VC decorations
 	std::string GetUndecoratedName() const;

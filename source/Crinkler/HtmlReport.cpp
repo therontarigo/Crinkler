@@ -734,20 +734,20 @@ int GetOutputSize(CompressionReportRecord* csr)
 #pragma pack(1)
 struct KKPByteData
 {
-  unsigned char data = 0;
-  short symbol = 0;
-  double packed = 0;
-  short line = -1;
-  short file = -1;
+	unsigned char data = 0;
+	short symbol = 0;
+	double packed = 0;
+	short line = -1;
+	short file = -1;
 };
 struct KKPSymbolData
 {
 	std::string name;
-  double packedSize = 0;
-  int unpackedSize = 0;
-  bool isCode = false;
-  int fileID = 0;
-  unsigned int sourcePos = 0xffffffff;
+	double packedSize = 0;
+	int unpackedSize = 0;
+	bool isCode = false;
+	int fileID = 0;
+	unsigned int sourcePos = 0xffffffff;
 };
 #pragma pack(pop)
 
@@ -779,7 +779,7 @@ static void KKPReportRecursive(CompressionReportRecord* csr, FILE* out, Hunk& hu
 
 			symbol.packedSize /= (double)BIT_PRECISION * 8.0;
 
-      kkpSymbols.emplace_back(symbol);			
+			kkpSymbols.emplace_back(symbol);
 		}
 		return;
 	}
@@ -789,19 +789,19 @@ static void KKPReportRecursive(CompressionReportRecord* csr, FILE* out, Hunk& hu
 }
 
 void KKPReport(CompressionReportRecord* csr, const char* filename, Hunk& hunk, Hunk& untransformedHunk, const int* sizefill,
-  const char* exefilename, int filesize, Crinkler* crinkler) {
-  identmap.clear();
-  num_divs[0] = num_divs[1] = num_divs[2] = num_divs[3] = 0;
-  num_sections = 0;
+	const char* exefilename, int filesize, Crinkler* crinkler) {
+	identmap.clear();
+	num_divs[0] = num_divs[1] = num_divs[2] = num_divs[3] = 0;
+	num_sections = 0;
 
-  map<int, Symbol*> relocs = hunk.GetOffsetToRelocationMap();
-  map<int, Symbol*> symbols = hunk.GetOffsetToSymbolMap();
-  FILE* out;
-  map<string, int> opcodeCounters;
-  if (fopen_s(&out, filename, "wb")) {
-    Log::Error(filename, "Cannot open file for writing");
-    return;
-  }
+	map<int, Symbol*> relocs = hunk.GetOffsetToRelocationMap();
+	map<int, Symbol*> symbols = hunk.GetOffsetToSymbolMap();
+	FILE* out;
+	map<string, int> opcodeCounters;
+	if (fopen_s(&out, filename, "wb")) {
+		Log::Error(filename, "Cannot open file for writing");
+		return;
+	}
 
 	std::vector<KKPSymbolData> symbolNames;
 
@@ -833,20 +833,20 @@ void KKPReport(CompressionReportRecord* csr, const char* filename, Hunk& hunk, H
 		std::string stub = "Crinkler doesn't support cpp file+line info yet.";
 		fwrite(stub.data(), 1, stub.size() + 1, out);
 		int length = 0;
-    fwrite(&length, 4, 1, out);
+		fwrite(&length, 4, 1, out);
 		fwrite(&length, 4, 1, out);
 	}
 
 	int symbolCount = (int)symbolNames.size();
-  fwrite(&symbolCount, 4, 1, out);
+	fwrite(&symbolCount, 4, 1, out);
 	for (auto& symbol : symbolNames)
 	{
 		fwrite(symbol.name.c_str(), 1, symbol.name.length() + 1, out);
 		fwrite(&symbol.packedSize, sizeof(symbol.packedSize), 1, out);
-    fwrite(&symbol.unpackedSize, sizeof(symbol.unpackedSize), 1, out);
-    fwrite(&symbol.isCode, 1, 1, out);
-    fwrite(&symbol.fileID, 4, 1, out);
-    fwrite(&symbol.sourcePos, 4, 1, out);
+		fwrite(&symbol.unpackedSize, sizeof(symbol.unpackedSize), 1, out);
+		fwrite(&symbol.isCode, 1, 1, out);
+		fwrite(&symbol.fileID, 4, 1, out);
+		fwrite(&symbol.sourcePos, 4, 1, out);
 	}
 
 	for (int x = 0; x < size; x++)
@@ -854,7 +854,7 @@ void KKPReport(CompressionReportRecord* csr, const char* filename, Hunk& hunk, H
 		fwrite(&kkpData[x], sizeof(KKPByteData), 1, out);
 	}
 
-  fclose(out);
+	fclose(out);
 
-  delete[] kkpData;
+	delete[] kkpData;
 }

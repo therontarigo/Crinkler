@@ -1067,7 +1067,7 @@ void Crinkler::Recompress(const char* input_filename, const char* output_filenam
 	CompressionReportRecord* csr = phase1->GetCompressionSummary(sizefill, splittingPoint);
 	if(m_printFlags & PRINT_LABELS)
 		VerboseLabels(csr);
-	if (!m_summaryFilename.empty())
+	if(!m_summaryFilename.empty())
 	{
 		HtmlReport(csr, m_summaryFilename.c_str(), *phase1, *phase1, sizefill,
 			output_filename, phase2->GetRawSize(), this);
@@ -1375,7 +1375,7 @@ void Crinkler::Link(const char* filename) {
 	CompressionReportRecord* csr = phase1->GetCompressionSummary(sizefill, splittingPoint);
 	if(m_printFlags & PRINT_LABELS)
 		VerboseLabels(csr);
-	if (!m_summaryFilename.empty())
+	if(!m_summaryFilename.empty())
 	{
 		HtmlReport(csr, m_summaryFilename.c_str(), *phase1, *phase1Untransformed, sizefill,
 			filename, phase2->GetRawSize(), this);

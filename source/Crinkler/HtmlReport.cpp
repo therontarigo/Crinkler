@@ -755,7 +755,7 @@ struct KKPSymbolData
 static void KKPReportRecursive(CompressionReportRecord* csr, FILE* out, Hunk& hunk, Hunk& untransformedHunk, const int* sizefill, bool iscode, map<int, Symbol*>& relocs, map<int, Symbol*>& symbols, map<string, int>& opcodeCounters,
 	const char* exefilename, int filesize, Crinkler* crinkler, KKPByteData* kkpData, std::vector<KKPSymbolData>& kkpSymbols, std::string parentName)
 {
-	if (!csr->children.size())
+	if (csr->GetLevel()==2) // Global symbols only
 	{
 		if (csr->compressedPos >= 0)
 		{
@@ -763,8 +763,13 @@ static void KKPReportRecursive(CompressionReportRecord* csr, FILE* out, Hunk& hu
 			symbol.name = csr->name;
 			symbol.isCode = csr->type & RECORD_CODE;
 
-			if (symbols.find(csr->pos) != symbols.end() && symbols[csr->pos]->friendlyName.size())
-				symbol.name = symbols[csr->pos]->friendlyName;
+			Symbol *csymbol = hunk.FindSymbol(csr->name.c_str());
+			if (csymbol) {
+				symbol.name = csymbol->name;
+				if (csymbol->friendlyName.size())
+					symbol.name = csymbol->friendlyName;
+			}
+			symbol.name = UndecorateSymbolName(symbol.name.c_str());
 
 			symbol.unpackedSize = csr->size;
 			symbol.sourcePos = csr->pos;
@@ -784,8 +789,9 @@ static void KKPReportRecursive(CompressionReportRecord* csr, FILE* out, Hunk& hu
 		return;
 	}
 
-	for (CompressionReportRecord* record : csr->children)
-		KKPReportRecursive(record, out, hunk, untransformedHunk, sizefill, iscode, relocs, symbols, opcodeCounters, exefilename, filesize, crinkler, kkpData, kkpSymbols, parentName + "::" + csr->name);
+	else
+		for (CompressionReportRecord* record : csr->children)
+			KKPReportRecursive(record, out, hunk, untransformedHunk, sizefill, iscode, relocs, symbols, opcodeCounters, exefilename, filesize, crinkler, kkpData, kkpSymbols, parentName + "::" + csr->name);
 }
 
 void KKPReport(CompressionReportRecord* csr, const char* filename, Hunk& hunk, Hunk& untransformedHunk, const int* sizefill,
@@ -793,6 +799,7 @@ void KKPReport(CompressionReportRecord* csr, const char* filename, Hunk& hunk, H
 	identmap.clear();
 	num_divs[0] = num_divs[1] = num_divs[2] = num_divs[3] = 0;
 	num_sections = 0;
+
 
 	map<int, Symbol*> relocs = hunk.GetOffsetToRelocationMap();
 	map<int, Symbol*> symbols = hunk.GetOffsetToSymbolMap();
